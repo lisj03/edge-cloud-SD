@@ -1,0 +1,26 @@
+syntax = "proto3";
+package sd;
+
+message FloatArray {
+  repeated float data = 1;
+}
+
+message VerifyRequest {
+  repeated int32 x_draft = 1;
+  repeated float q_value = 2;
+  int32 gamma = 3;
+}
+
+message VerifyResponse {
+  int32 j = 1;
+  int32 flag = 2;
+  repeated float pj = 3;
+  repeated int32 xj = 4;
+  float llm_time = 5;
+  int32 correct_num = 6;
+  int32 reject_num = 7;
+}
+
+service SDVerify {
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
