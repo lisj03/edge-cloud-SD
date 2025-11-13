@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import grpc_pb2 as grpc__pb2
+import sd_pb2 as sd__pb2
 
 GRPC_GENERATED_VERSION = '1.75.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in grpc_pb2_grpc.py depends on'
+        + f' but the generated code in sd_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,8 @@ class SDVerifyStub(object):
         """
         self.Verify = channel.unary_unary(
                 '/sd.SDVerify/Verify',
-                request_serializer=grpc__pb2.VerifyRequest.SerializeToString,
-                response_deserializer=grpc__pb2.VerifyResponse.FromString,
+                request_serializer=sd__pb2.VerifyRequest.SerializeToString,
+                response_deserializer=sd__pb2.VerifyResponse.FromString,
                 _registered_method=True)
 
 
@@ -55,8 +55,8 @@ def add_SDVerifyServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Verify': grpc.unary_unary_rpc_method_handler(
                     servicer.Verify,
-                    request_deserializer=grpc__pb2.VerifyRequest.FromString,
-                    response_serializer=grpc__pb2.VerifyResponse.SerializeToString,
+                    request_deserializer=sd__pb2.VerifyRequest.FromString,
+                    response_serializer=sd__pb2.VerifyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,8 +84,8 @@ class SDVerify(object):
             request,
             target,
             '/sd.SDVerify/Verify',
-            grpc__pb2.VerifyRequest.SerializeToString,
-            grpc__pb2.VerifyResponse.FromString,
+            sd__pb2.VerifyRequest.SerializeToString,
+            sd__pb2.VerifyResponse.FromString,
             options,
             channel_credentials,
             insecure,

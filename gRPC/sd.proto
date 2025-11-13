@@ -7,7 +7,7 @@ message FloatArray {
 
 message VerifyRequest {
   repeated int32 x_draft = 1;
-  repeated float q_value = 2;
+  repeated double q_values = 2;
   int32 gamma = 3;
 }
 
