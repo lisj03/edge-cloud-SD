@@ -239,6 +239,8 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                         parallel_generated_total += 1  # 统计并行生成的token总数
                         with torch.no_grad():
                             x_draft_current, q_value, q_prob = uav_node.draft_DSSD(x_draft_current, 1)
+                            print("q_value:", q_value)
+                            print("q_prob.shape:", q_prob.shape)
                             q_values_current.append(q_value[0])  # q_value是列表,取第一个元素
                             q_probs_current.append(q_prob)       # 保持(1,V)结构,稍后stack成(n,V)
                             # 打印并行生成的token

@@ -61,11 +61,11 @@
 
 - 启动 gRPC 服务器：
   ```bash
-  python grpc_server.py \
+  python server.py \
     --target_model_name /home/lym/sijia/DSSD/DSSD-Efficient-Edge-Computing/LLM/vicuna-33b \
     --device cuda:0 \
     --port 50051 \
-    --multi_gpu \
+    --use_multi_gpu \
     --gpu_ids "0,1,2,3" 
     
 
