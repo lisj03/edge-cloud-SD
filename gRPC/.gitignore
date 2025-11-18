@@ -2,3 +2,4 @@ trash/
 LLM/
 __pycache__/
 results/
+benchmark/
