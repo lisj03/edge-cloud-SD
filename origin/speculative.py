@@ -11,20 +11,21 @@ import json
 
 
 # Node 类
+from speculative import *
 import torch
 import torch.nn.functional as F
     
 def normal_generate(large_model, tokenizer, input_ids, device, args):
-    print("Baseline autoregressive:")
+    # print("Baseline autoregressive:")
     input_ids = input_ids.to(device)
     _prefix, t_ar, _, tp_ar = autoregressive_sampling(
         input_ids, large_model.to(device),
         args.max_len,
         args.temperature, args.top_k, args.top_p)
     
-    print('text: ', tokenizer.decode(_prefix[0], skip_special_tokens=True))
-    print(f"  throughput_base: {tp_ar:.4f}")
-    print(f"  time_cost_base: {t_ar:.4f}")
+    # print('text: ', tokenizer.decode(_prefix[0], skip_special_tokens=True))
+    # print(f"  throughput_base: {tp_ar:.4f}")
+    # print(f"  time_cost_base: {t_ar:.4f}")
     return _prefix, t_ar, tp_ar
 
 def transmission_simulator(token_count: int, rtt: float, bandwidth: float, bits_per_token: int = 32) -> float:
@@ -187,7 +188,7 @@ def autoregressive_sampling(prefix : torch.Tensor, model : torch.nn.Module, max_
     n = len(prefix)
     T = len(prefix) + max_len
     t1 = time.time()
-    with tqdm(total=max_len, desc="autoregressive sampling") as pbar:
+    with tqdm(total=max_len, desc="autoregressive sampling", disable=True) as pbar:
         while n < T:
             logits = model(prefix).logits[::, -1, :]
             idx_next = sample(logits, temperature, top_k, top_p)
@@ -195,7 +196,7 @@ def autoregressive_sampling(prefix : torch.Tensor, model : torch.nn.Module, max_
             n += 1
             pbar.update(1)
     t2 = time.time()
-    print(f"autoregressive throughput: {T / (t2 - t1)} tokens/s", 'time_cost: ', t2 - t1, 'generated_length: ', T)
+    # print(f"autoregressive throughput: {T / (t2 - t1)} tokens/s", 'time_cost: ', t2 - t1, 'generated_length: ', T)
     return prefix, (t2 - t1), T, T / (t2 - t1)
 
 def max_fn(x):
@@ -213,7 +214,7 @@ def norm_logits(p : torch.Tensor):
     return F.softmax(p, dim=-1)
 
 def speculative_sampling(prefix : torch.Tensor, approx_model : torch.nn.Module, target_model : torch.nn.Module, max_len : int , gamma : int = 4, temperature : float = 1, top_k : int = 0, top_p : float = 0, device : str = 'cuda:0') -> torch.Tensor:
-    r"""
+    """
     Args:
         x (torch.Tensor): input sequence, (batch, prefix_seqlen), Note that the batch dim is always 1 now.
         approx_model (torch.nn.Module): approx model, the small one
@@ -233,7 +234,7 @@ def speculative_sampling(prefix : torch.Tensor, approx_model : torch.nn.Module, 
     accepted_count = 0
     rejected_count = 0
     t1 = time.time()
-    with tqdm(total=T, desc="speculative sampling") as pbar:
+    with tqdm(total=T, desc="speculative sampling", disable=True) as pbar:
         while prefix.shape[1] < T:
             # q = M_q[prefix + x_0, x_1, .., x_(gamma-2)]
             x = prefix
@@ -294,7 +295,7 @@ def speculative_sampling(prefix : torch.Tensor, approx_model : torch.nn.Module, 
 
 
 def speculative_sampling_with_acceptance_rate(prefix : torch.Tensor, approx_model : torch.nn.Module, target_model : torch.nn.Module, max_len : int , gamma : int = 4, temperature : float = 1, top_k : int = 0, top_p : float = 0, verbose : bool = False, device : str = 'cuda:0') -> torch.Tensor:
-    r"""
+    """
     Args:
         x (torch.Tensor): input sequence, (batch, prefix_seqlen), Note that the batch dim is always 1 now.
         approx_model (torch.nn.Module): approx model, the small one
@@ -316,7 +317,7 @@ def speculative_sampling_with_acceptance_rate(prefix : torch.Tensor, approx_mode
     assert prefix.shape[0] == 1, "input batch size must be 1"
     
     t1 = time.time()
-    with tqdm(total=T, desc="speculative sampling") as pbar:
+    with tqdm(total=T, desc="speculative sampling", disable=True) as pbar:
         while prefix.shape[1] < T:
             # q = M_q[prefix + x_0, x_1, .., x_(gamma-2)]
             x = prefix.to(device)

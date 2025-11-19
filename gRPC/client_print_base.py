@@ -1,5 +1,5 @@
 import argparse
-from speculative import * 
+from gRPC.test.speculative import * 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from typing import Tuple, List, Dict

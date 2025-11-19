@@ -11,6 +11,7 @@ import json
 
 
 # Node 类
+from speculative import *
 import torch
 import torch.nn.functional as F
     
@@ -213,7 +214,7 @@ def norm_logits(p : torch.Tensor):
     return F.softmax(p, dim=-1)
 
 def speculative_sampling(prefix : torch.Tensor, approx_model : torch.nn.Module, target_model : torch.nn.Module, max_len : int , gamma : int = 4, temperature : float = 1, top_k : int = 0, top_p : float = 0, device : str = 'cuda:0') -> torch.Tensor:
-    r"""
+    """
     Args:
         x (torch.Tensor): input sequence, (batch, prefix_seqlen), Note that the batch dim is always 1 now.
         approx_model (torch.nn.Module): approx model, the small one
@@ -294,7 +295,7 @@ def speculative_sampling(prefix : torch.Tensor, approx_model : torch.nn.Module, 
 
 
 def speculative_sampling_with_acceptance_rate(prefix : torch.Tensor, approx_model : torch.nn.Module, target_model : torch.nn.Module, max_len : int , gamma : int = 4, temperature : float = 1, top_k : int = 0, top_p : float = 0, verbose : bool = False, device : str = 'cuda:0') -> torch.Tensor:
-    r"""
+    """
     Args:
         x (torch.Tensor): input sequence, (batch, prefix_seqlen), Note that the batch dim is always 1 now.
         approx_model (torch.nn.Module): approx model, the small one

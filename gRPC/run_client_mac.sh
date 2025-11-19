@@ -14,6 +14,42 @@ import grpc
 import sd_pb2
 import sd_pb2_grpc
 
+#测试
+from test.boolq import load_mini_boolq, extract_boolq_answer
+
+def evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20):
+    """
+    使用 Mini-BoolQ 进行回归测试，验证 gRPC speculative decoding 的正确性。
+    """
+
+    dataset = load_mini_boolq(n_samples=n_samples)
+
+    correct = 0
+
+    print("\n=== Running Mini-BoolQ regression test ===\n")
+
+    for item in tqdm(dataset, desc="Mini-BoolQ"):
+        passage = item["passage"]
+        question = item["question"]
+        gt = "true" if item["answer"] else "false"
+
+        prompt = f"{passage}\nQuestion: {question}\nAnswer:"
+
+        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+
+        # 调用 gRPC speculative decoding
+        output_text = generate(uav_node, stub, input_ids, tokenizer, args)
+
+        pred = extract_boolq_answer(output_text)
+
+        if pred == gt:
+            correct += 1
+
+    print("\n=== Mini-BoolQ Accuracy ===")
+    print(f"Accuracy: {correct}/{n_samples} = {correct/n_samples:.3f}")
+
+    return correct / n_samples
+
 class UAVNode:
     """无人机节点 - 负责draft阶段的小模型推理"""
     
@@ -175,13 +211,22 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             
             t_slm_start = time.time()
 
-            if needed_token_num > 0:
+            if needed_token_num > 0 and needed_token_num < args.gamma:
+                #预生成+新生成
+                x_draft, q_values_added, q_probs_added = uav_node.draft_DSSD(prefix, needed_token_num)             
+                q_values = q_values_current[-parallel_tokens:] + q_values_added 
+                q_probs = torch.cat(q_probs_current[-parallel_tokens:] + [q_probs_added], dim=0)
+                print("len_q_values:", len(q_values))
+                print("len_q_probs:", len(q_probs))
+                gamma = args.gamma
+            elif needed_token_num == args.gamma:
+                #全部新生成
                 x_draft, q_values, q_probs = uav_node.draft_DSSD(prefix, needed_token_num)             
                 print("len_q_values:", len(q_values))
                 print("len_q_probs:", len(q_probs))
                 gamma = args.gamma
             else:
-                # needed_token_num <= 0: 直接使用prefix,不生成新token
+                # 全部预生成
                 x_draft = x_draft_current.clone()
                 q_values = q_values_current[-parallel_tokens:]  
                 q_probs = torch.cat(q_probs_current[-parallel_tokens:], dim=0) 
@@ -239,8 +284,6 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                         parallel_generated_total += 1  # 统计并行生成的token总数
                         with torch.no_grad():
                             x_draft_current, q_value, q_prob = uav_node.draft_DSSD(x_draft_current, 1)
-                            print("q_value:", q_value)
-                            print("q_prob.shape:", q_prob.shape)
                             q_values_current.append(q_value[0])  # q_value是列表,取第一个元素
                             q_probs_current.append(q_prob)       # 保持(1,V)结构,稍后stack成(n,V)
                             # 打印并行生成的token
@@ -376,6 +419,8 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
     print(f"Total SLM (device) time: {total_slm_time:.2f}s")
     print(f"Total LLM (BS) time: {total_llm_time:.2f}s")
 
+    return generated
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='args')
@@ -418,5 +463,10 @@ if __name__ == "__main__":
     #1:gRPC
     with grpc.insecure_channel(args.server_addr) as channel:
         stub = sd_pb2_grpc.SDVerifyStub(channel)
-        generate(uav_node, stub, input_ids, tokenizer, args)
+        
+        # text = generate(uav_node, stub, input_ids, tokenizer, args)
+
+        print("\n===== Running Mini-BoolQ regression test =====")
+        acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=100 )
+        print("Mini-BoolQ test accuracy:", acc)
     

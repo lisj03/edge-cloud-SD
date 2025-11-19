@@ -175,13 +175,22 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             
             t_slm_start = time.time()
 
-            if needed_token_num > 0:
+            if needed_token_num > 0 and needed_token_num < args.gamma:
+                #预生成+新生成
+                x_draft, q_values_added, q_probs_added = uav_node.draft_DSSD(prefix, needed_token_num)             
+                q_values = q_values_current[-parallel_tokens:] + q_values_added 
+                q_probs = torch.cat(q_probs_current[-parallel_tokens:] + [q_probs_added], dim=0)
+                print("len_q_values:", len(q_values))
+                print("len_q_probs:", len(q_probs))
+                gamma = args.gamma
+            elif needed_token_num == args.gamma:
+                #全部新生成
                 x_draft, q_values, q_probs = uav_node.draft_DSSD(prefix, needed_token_num)             
                 print("len_q_values:", len(q_values))
                 print("len_q_probs:", len(q_probs))
                 gamma = args.gamma
             else:
-                # needed_token_num <= 0: 直接使用prefix,不生成新token
+                # 全部预生成
                 x_draft = x_draft_current.clone()
                 q_values = q_values_current[-parallel_tokens:]  
                 q_probs = torch.cat(q_probs_current[-parallel_tokens:], dim=0) 
