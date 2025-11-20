@@ -356,6 +356,9 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                 q_probs = torch.cat(q_probs_current[-parallel_tokens:] + [q_probs_added], dim=0)
                 print("len_q_values:", len(q_values))
                 print("len_q_probs:", len(q_probs))
+                print(q_values)
+                print(q_probs)
+                exit(0)
                 gamma = args.gamma
             elif needed_token_num == args.gamma:
                 #全部新生成
@@ -370,6 +373,9 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                 q_probs = torch.cat(q_probs_current[-parallel_tokens:], dim=0) 
                 print("len_q_values:", len(q_values))
                 print("len_q_probs:", len(q_probs))
+                print(q_values)
+                print(q_probs)
+                exit(0)
                 gamma = parallel_tokens
 
             total_slm_time += time.time() - t_slm_start
