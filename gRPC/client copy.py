@@ -308,39 +308,39 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
         initial_len = prefix.shape[1]
         start_time = time.time()
 
+        # 初始化主变量(用于在并行计算后可能传递到下一轮)
+        x_draft = None
         q_values = []
-        q_probs = []  
+        q_probs = None  
+        q_values_current = []  # 直接初始化为空列表
+        q_probs_current = []   # 直接初始化为空列表
+        gamma = 0
         
         # 上一轮并行计算的结果(如果被接受)
         parallel_accepted = False
+        parallel_tokens = 0
 
         old_len = prefix.shape[1]
 
         # 主循环：直到生成达到最大长度
         while prefix.shape[1] < max_total_len:
-
-            old_len = prefix.shape[1]
-            generated_token_num = 0
-            rounds += 1
-            x_draft = prefix.clone()
-            confidence = 1
-
-            if rounds == 20 :
-                break
-
+            # 计算本轮需要生成的token数量
             if parallel_accepted:
-                q_values = q_values_current[-len(q_values_current)+1:] 
-                q_probs = q_probs_current[-len(q_probs_current)+1:]
-                generated_token_num = len(q_values)
-                x_draft = x_draft_current
-                for q_val in q_values:
-                    confidence *= q_val
-                parallel_accepted = False  
-
+                # 上一轮并行结果被接受,已经包含在prefix中
+                needed_token_num = max(0, args.gamma - parallel_tokens  )
+                print(f"[并行优化] 上轮并行结果已使用,已有{parallel_tokens  }个token,还需{needed_token_num}个")
+                parallel_accepted = False  # 重置标志
+            else:
+                needed_token_num = args.gamma
+            
+            old_len = prefix.shape[1]
+            rounds += 1
 
             print(f"\n{'='*60}")
             print(f"Round {rounds}")
             print(f"{'='*60}")
+
+            print(f"\n[步骤1] 生成 {needed_token_num} 个token:")
 
             # ========== 步骤1: 生成token ==========
             prefix_text = tokenizer.decode(prefix[0], skip_special_tokens=True)
@@ -348,44 +348,52 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             print(f"           prefix长度: {prefix.shape[1]}")
             
             t_slm_start = time.time()
-            
-            print(f"\n[步骤1] 自适应生成:")
 
-            #根据置信度逐个生成
-            while confidence > 0.5:
-                x_draft, q_value, q_prob = uav_node.draft_DSSD(x_draft, 1)
-                generated_token_num += 1
-                q_values.append(q_value[0])  
-                q_probs.append(q_prob)
-                # 更新置信度
-                original_confidence = confidence
-                confidence = confidence * q_value[0]
-                # 打印token信息
-                new_token_id = x_draft[0, -1].item()
-                new_token_text = tokenizer.decode([new_token_id], skip_special_tokens=True)
-                print(f"        Token {generated_token_num}: \"{new_token_text}\" | q={q_value[0]:.4f} | conf: {original_confidence:.4f}→{confidence:.4f}")
-            gamma = generated_token_num
-            print(f"        ✓ 共生成 {generated_token_num} 个token，最终置信度={confidence:.4f}")
+            if needed_token_num > 0 and needed_token_num < args.gamma:
+                #预生成+新生成
+                x_draft, q_values_added, q_probs_added = uav_node.draft_DSSD(prefix, needed_token_num)             
+                q_values = q_values_current[-parallel_tokens:] + q_values_added 
+                q_probs = torch.cat(q_probs_current[-parallel_tokens:] + [q_probs_added], dim=0)
+                print("len_q_values:", len(q_values))
+                print("len_q_probs:", len(q_probs))
+                gamma = args.gamma
+            elif needed_token_num == args.gamma:
+                #全部新生成
+                x_draft, q_values, q_probs = uav_node.draft_DSSD(prefix, needed_token_num)             
+                print("len_q_values:", len(q_values))
+                print("len_q_probs:", len(q_probs))
+                gamma = args.gamma
+            else:
+                # 全部预生成
+                x_draft = x_draft_current.clone()
+                q_values = q_values_current[-parallel_tokens:]  
+                q_probs = torch.cat(q_probs_current[-parallel_tokens:], dim=0) 
+                print("len_q_values:", len(q_values))
+                print("len_q_probs:", len(q_probs))
+                gamma = parallel_tokens
 
             total_slm_time += time.time() - t_slm_start
 
 
             # ========== 步骤2: 准备验证请求 ==========
             tokens_to_send = x_draft.squeeze(0).tolist()
-            stacked_q_probs = torch.stack(q_probs, dim=0)   
 
             req = sd_pb2.VerifyRequest(
                 x_draft=tokens_to_send,  
-                gamma=generated_token_num,  
+                gamma=gamma,  
                 q_values=q_values
             )
             
             # 打印发送的内容
             print(f"\n[步骤2] 准备验证请求:")
+            print(f"        发送的x_draft长度: {len(tokens_to_send)}")
             print(f"        发送的gamma: {gamma}")
             print(f"        发送的q_values长度: {len(q_values)}")
-            draft_text = tokenizer.decode(tokens_to_send, skip_special_tokens=True)
-            print(f"        发送的x_draft内容: \"{draft_text}\"")
+            if len(q_values) > 0:
+                print(f"        q_values: {[f'{v:.4f}' for v in q_values]}")
+            # 打印x_draft的最后几个token(用于调试)
+            draft_tokens_text = tokenizer.decode(tokens_to_send, skip_special_tokens=True)
+            print(f"        x_draft末尾token: \"{draft_tokens_text}\"")
 
             # ========== 步骤3: 异步发送验证请求 ==========
             comm_start = time.time()
@@ -399,8 +407,6 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                 x_draft_current = x_draft.clone()
                 
                 parallel_count = 0  # 并行计算次数
-                q_values_current = []  # 并行计算的q_values
-                q_probs_current = []   # 并行计算的q_probs  
                 print(f"\n[步骤3] 异步发送验证请求,开始等待服务器响应...")
                 
                 while True:
@@ -408,9 +414,12 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                         resp = future.result(timeout=timeout_ms / 1000.0)
                         if parallel_count > 0:
                             print(f"[并行计算] 服务器响应已到达,共执行 {parallel_count} 次并行draft")
+                        else:
+                            print(f"[并行计算] 服务器响应已到达,无需并行计算")
                         break
                     except grpc.FutureTimeoutError:
                         parallel_count += 1
+                        parallel_generated_total += 1  # 统计并行生成的token总数
                         with torch.no_grad():
                             x_draft_current, q_value, q_prob = uav_node.draft_DSSD(x_draft_current, 1)
                             q_values_current.append(q_value[0])  # q_value是列表,取第一个元素
@@ -450,6 +459,7 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             draft_len = x_draft.shape[1]
             
             print(f"\n[步骤5] 处理验证结果:")
+            print(f"        并行计算次数: {parallel_count}")
             
             if flag == 1:
                 # 情况1：全部接受(flag=1) → 基站返回x_{gamma+1}
@@ -460,23 +470,32 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                 # 检查并行计算是否有结果,且服务器返回的token与并行计算的第一个token匹配
                 if parallel_count > 0:
                     parallel_first_token_id = x_draft_current[0, draft_len].item()
-
+                    print(f"        匹配检查: {xj_id} == {parallel_first_token_id} ? {xj_id == parallel_first_token_id}")
+                    
                     if xj_id == parallel_first_token_id:
                         print(f"[并行优化] ✓ 并行计算结果与服务器匹配!使用并行生成的序列")
                         new_prefix = torch.cat([x_draft, xj], dim=1)
                         parallel_accepted = True
+                        parallel_tokens = parallel_count - 1
+                        print(f"        x_draft_current长度: {x_draft_current.shape[1]}")
+                        print(f"        将使用并行序列,包含 {parallel_tokens} 个额外的token")
                     else:
                         print(f"[并行优化] ✗ 并行计算结果与服务器不匹配,使用原始方案")
                         new_prefix = torch.cat([x_draft, xj], dim=1)
                         parallel_accepted = False
+                        parallel_tokens = 0
                 else:
                     print(f"        无并行计算,直接使用原始draft + 服务器token")
                     new_prefix = torch.cat([x_draft, xj], dim=1)
                     parallel_accepted = False
+                    parallel_tokens = 0
+                
+                print(f"        new_prefix长度: {new_prefix.shape[1]}")
                 
                 # 检查是否超出限制
                 if new_prefix.shape[1] > max_total_len:
                     new_prefix = new_prefix[:, :max_total_len]
+                    print(f"        超出限制,截断到: {max_total_len}")
             else:
                 # 情况2：拒绝(flag=0) → 基站返回j(int) + P_j分布(tensor)
                 # 设备用本地保存的q_probs和基站发送的pj重新采样x_j'
@@ -490,14 +509,18 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
                 x_draft[:, prefix_len + j - 1] = xj_prime.to(x_draft.device)
                 # 新前缀：前缀 + 接受的token + 重新采样的token
                 new_prefix = torch.cat([prefix, x_draft[:, prefix_len:prefix_len+j]], dim=1)
+                print(f"        new_prefix长度: {new_prefix.shape[1]} (接受了{j}个token)")
                 parallel_accepted = False
+                parallel_tokens = 0
 
+            
             # 更新前缀
             prefix = new_prefix
 
-            #打印最终结果
-            new_prefix_text = tokenizer.decode(new_prefix[0], skip_special_tokens=True)
-            print(f"\n[结果] new_prefix:  \"{new_prefix_text}\"")
+            # #打印最终结果
+            # new_prefix_text = tokenizer.decode(new_prefix[0], skip_special_tokens=True)
+            # print(f"\n[结果] new_prefix:  \"{new_prefix_text}\"")
+            # print(f"       本轮新增tokens: {prefix.shape[1] - old_len}个")
 
             # 更新进度条
             new_len = prefix.shape[1]
@@ -581,7 +604,7 @@ if __name__ == "__main__":
         stub = sd_pb2_grpc.SDVerifyStub(channel)
         
         text_parallel = generate(uav_node, stub, input_ids, tokenizer, args)
-        # text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
+        text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
 
         # print("\n===== Running Mini-BoolQ regression test =====")
         # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20 )
