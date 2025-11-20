@@ -38,7 +38,8 @@ def evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20):
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
 
         # 调用 gRPC speculative decoding
-        output_text = generate(uav_node, stub, input_ids, tokenizer, args)
+        # output_text = generate(uav_node, stub, input_ids, tokenizer, args)
+        output_text = generate0(uav_node, stub, input_ids, tokenizer, args)
 
         pred = extract_boolq_answer(output_text)
 
@@ -146,7 +147,144 @@ class UAVNode:
 
         return xj_prime
 
-#1:新的generate函数
+def generate0(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace) -> None:
+
+    input_ids = input_ids.to(uav_node.device)
+    max_total_len = args.max_len + input_ids.shape[1]  # 生成的总长度（输入+输出）
+
+
+    # 初始化统计指标
+    total_comm_delay = 0.0  # 总通信延迟（上行+下行）
+    total_slm_time = 0.0    # 设备小模型（SLM）总时间
+    total_llm_time = 0.0    # 基站大模型（LLM）总时间
+    rounds = 0              # 循环轮次
+    correct_num_total = 0   # 接受的token总数
+    reject_num_total = 0    # 拒绝的token总数
+
+    # 初始化前缀
+    prefix = input_ids
+
+    with tqdm(total=max_total_len, desc="SD: Speculative Decoding") as pbar:
+        pbar.update(prefix.shape[1])  # 初始进度（输入长度）
+        initial_len = prefix.shape[1]
+        start_time = time.time()
+
+        # 主循环：直到生成达到最大长度
+        while prefix.shape[1] < max_total_len:
+            old_len = prefix.shape[1]
+            rounds += 1
+
+            # print(f"\n{'='*60}")
+            # print(f"Round {rounds}")
+            # print(f"{'='*60}")
+
+            # ========== 步骤1: 逐个生成gamma个token ==========
+            # 打印prefix的文本内容
+            # prefix_text = tokenizer.decode(prefix[0], skip_special_tokens=True)
+            # print(f"[初始状态] prefix: \"{prefix_text}\"")
+
+            t_slm_start = time.time()
+            x_draft, q_values, q_probs = uav_node.draft_DSSD(prefix, args.gamma)
+            total_slm_time += time.time() - t_slm_start
+
+            # ========== 步骤2: 准备验证请求 ==========
+            tokens_to_send = x_draft.squeeze(0).tolist()
+
+            req = sd_pb2.VerifyRequest(
+                x_draft=tokens_to_send,  
+                gamma=int(args.gamma),
+                q_values=q_values
+            )
+            
+
+            # ========== 步骤3: 同步发送验证请求 ==========
+            comm_start = time.time()
+            
+            try:
+                resp = stub.Verify(req)  # 同步调用
+                comm_end = time.time()
+            except grpc.RpcError as e:
+                print(f"gRPC error: {e}")
+                break
+            http_dur = (comm_end - comm_start)
+            llm_time = float(resp.llm_time)
+            total_llm_time += llm_time
+            comm_only = max(http_dur - llm_time, 0.0)
+            total_comm_delay += comm_only
+
+            flag = int(resp.flag)
+            correct_num_total += int(resp.correct_num)
+            reject_num_total += int(resp.reject_num)
+
+            # 打印验证结果
+            # print(f"\n[步骤4] 验证结果: flag={flag}, correct={resp.correct_num}, reject={resp.reject_num}")
+            # if flag == 1 and len(resp.xj) > 0:
+            #     xj_id = int(resp.xj[0])
+            #     xj_text = tokenizer.decode([xj_id], skip_special_tokens=True)
+            #     print(f"        服务器返回token: \"{xj_text}\" (ID={xj_id})")
+
+            # ========== 步骤6: 处理验证结果 ==========
+            prefix_len = prefix.shape[1]  # 当前前缀长度
+            if flag == 1:
+                # 情况1：全部接受（flag=1）→ 基站返回x_{gamma+1}
+                xj_id = int(resp.xj[0])
+                xj = torch.tensor([[xj_id]], dtype=torch.long, device=uav_node.device)
+                new_prefix = torch.cat([x_draft, xj], dim=1)
+                # 检查是否超出限制
+                if new_prefix.shape[1] > max_total_len:
+                    new_prefix = new_prefix[:, :max_total_len]
+            else:
+                # 情况2：拒绝（flag=0）→ 基站返回j（int） + P_j分布（tensor）
+                # 设备用本地保存的q_probs和基站发送的pj重新采样x_j'
+                j = int(resp.j)
+                pj = torch.tensor(list(resp.pj), dtype=torch.float32)                 
+                xj_prime = uav_node.resample_DSSD(j, pj, q_probs)
+                # 更新x_draft中的拒绝token（x_j→x_j'）
+                x_draft[:, prefix_len + j - 1] = xj_prime.to(x_draft.device)
+                # 新前缀：前缀 + 接受的token + 重新采样的token
+                new_prefix = torch.cat([prefix, x_draft[:, prefix_len:prefix_len+j]], dim=1)
+            
+                #打印
+                # xj_prime_text = tokenizer.decode(xj_prime[0], skip_special_tokens=True)
+                # print(f"[步骤6] ❌ 部分拒绝，回滚到 j={j}，修正为: \"{xj_prime_text}\"")
+            
+            # 更新前缀
+            prefix = new_prefix
+
+            # #打印最终结果
+            # new_prefix_text = tokenizer.decode(new_prefix[0], skip_special_tokens=True)
+            # print(f"\n[结果] new_prefix:  \"{new_prefix_text}\"")
+            # print(f"       本轮新增tokens: {prefix.shape[1] - old_len}个")
+
+            # 更新进度条
+            new_len = prefix.shape[1]
+            pbar.update(new_len - old_len)
+
+        # 结果统计
+        total_time = time.time() - start_time
+        total_tokens = prefix.shape[1] - initial_len  # 生成的token总数（排除输入）
+        throughput = total_tokens / total_time if total_time > 0 else 0.0
+        acceptance_rate = correct_num_total / (rounds * args.gamma) if (rounds * args.gamma) > 0 else 0.0
+
+    # 解码生成的文本
+    generated = tokenizer.decode(prefix[0], skip_special_tokens=True)
+    print("\n=== DSSD Results(gRPC) ===")
+    print(f"Generated text: \033[91m{generated}\033[0m")
+    print(f"Throughput: \033[91m{throughput:.2f}\033[0m tokens/s")
+    print(f"Acceptance rate: {acceptance_rate:.3f}")
+    print(f"Total rounds: {rounds}")
+    # print(f"Total accepted tokens: {correct_num_total}")
+    # print(f"Total rejected tokens: {reject_num_total}")
+    # print(f"Total proposed tokens: {rounds * args.gamma}")
+    # print(f"Accept/Reject ratio: {correct_num_total}/{reject_num_total} = {correct_num_total/max(reject_num_total,1):.2f}")
+    print(f"Total communication delay: {total_comm_delay:.2f}s")
+    print(f"Total SLM (device) time: {total_slm_time:.2f}s")
+    print(f"Total LLM (BS) time: {total_llm_time:.2f}s")
+    print(f"Total time: {total_time:.2f}s")
+    
+    return generated
+
+
 def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace) -> None:
 
     input_ids = input_ids.to(uav_node.device)
@@ -403,22 +541,23 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
     print("\n=== DSSD Results(gRPC) ===")
     print(f"Generated text: \033[91m{generated}\033[0m")
     print(f"Throughput: \033[91m{throughput:.2f}\033[0m tokens/s")
-    print(f"Acceptance rate: {acceptance_rate:.3f}")
+    # print(f"Acceptance rate: {acceptance_rate:.3f}")
     print(f"Total rounds: {rounds}")
-    print(f"Total accepted tokens: {correct_num_total}")
-    print(f"Total rejected tokens: {reject_num_total}")
-    print(f"Total proposed tokens: {rounds * args.gamma}")
-    print(f"Accept/Reject ratio: {correct_num_total}/{reject_num_total} = {correct_num_total/max(reject_num_total,1):.2f}")
-    print(f"\n--- Parallel Computing Stats ---")
-    print(f"Parallel generated tokens: {parallel_generated_total}")
-    print(f"Parallel accepted tokens: {parallel_accepted_total}")
-    print(f"Parallel acceptance rate: {parallel_acceptance_rate:.3f}")
-    print(f"Parallel efficiency: {parallel_accepted_total}/{parallel_generated_total}")
+    # print(f"Total accepted tokens: {correct_num_total}")
+    # print(f"Total rejected tokens: {reject_num_total}")
+    # print(f"Total proposed tokens: {rounds * args.gamma}")
+    # print(f"Accept/Reject ratio: {correct_num_total}/{reject_num_total} = {correct_num_total/max(reject_num_total,1):.2f}")
+    # print(f"\n--- Parallel Computing Stats ---")
+    # print(f"Parallel generated tokens: {parallel_generated_total}")
+    # print(f"Parallel accepted tokens: {parallel_accepted_total}")
+    # print(f"Parallel acceptance rate: {parallel_acceptance_rate:.3f}")
+    # print(f"Parallel efficiency: {parallel_accepted_total}/{parallel_generated_total}")
     print(f"\n--- Time Stats ---")
     print(f"Total communication delay: {total_comm_delay:.2f}s")
     print(f"Total SLM (device) time: {total_slm_time:.2f}s")
     print(f"Total LLM (BS) time: {total_llm_time:.2f}s")
-
+    print(f"Total time: {total_time:.2f}s")
+    
     return generated
 
 
@@ -464,9 +603,10 @@ if __name__ == "__main__":
     with grpc.insecure_channel(args.server_addr) as channel:
         stub = sd_pb2_grpc.SDVerifyStub(channel)
         
-        text = generate(uav_node, stub, input_ids, tokenizer, args)
+        text_parallel = generate(uav_node, stub, input_ids, tokenizer, args)
+        text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
 
         # print("\n===== Running Mini-BoolQ regression test =====")
-        # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=100 )
+        # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20 )
         # print("Mini-BoolQ test accuracy:", acc)
     

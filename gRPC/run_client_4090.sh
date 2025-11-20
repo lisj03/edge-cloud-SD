@@ -4,12 +4,12 @@ set -euo pipefail
 # 默认参数
 INPUT="I find 3 gold coins in the bottom of a river. What do I spend them on?"
 DRAFT_MODEL="/home/lym/sijia/DSSD/gRPC/LLM/opt-125m"
-MAX_LEN=50
+MAX_LEN=256
 SEED=321
 TEMPERATURE=1
 TOP_K=10
 TOP_P=0
-GAMMA=3
+GAMMA=6
 DEVICE="cuda:0"
 SERVER_ADDR=127.0.0.1:8000
 
