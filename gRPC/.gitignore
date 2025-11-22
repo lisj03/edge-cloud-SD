@@ -3,3 +3,5 @@ LLM/
 __pycache__/
 results/
 benchmark/
+run_client_mac.sh
+run_clinet_4090.sh
