@@ -102,12 +102,17 @@ class UAVNode:
                 
                 # 应用重复惩罚
                 step_logits = logits[:, -1, :]
-                step_logits = apply_repetition_penalty(step_logits, x, penalty=1.4)
+                step_logits = apply_repetition_penalty(step_logits, x, penalty=1.2)
                 
                 next_tok = sample(step_logits,
                                 self.args.temperature, 
                                 self.args.top_k, 
                                 self.args.top_p)
+
+                # next_tok = sample(logits[:, -1, :],
+                #                 self.args.temperature, 
+                #                 self.args.top_k, 
+                #                 self.args.top_p)
                 x = torch.cat((x, next_tok), dim=1)
         
         q_step_logits = torch.stack(q_stack, dim=0)  # -> (γ, V)
@@ -141,6 +146,7 @@ class UAVNode:
                 # 1. 小模型前向计算，得到当前分布Q_i(x)
                 # logits = self.model(x).logits  # (1, seq, V)
                 # q_dist = F.softmax(logits[0, -1], dim=-1).cpu()  # Q_i(x)：当前步骤的完整分布
+
                 logits = self.model(x).logits  # (1, seq, V)
                 # 取最后一个 step 的 logits
                 step_logits = logits[:, -1, :]
@@ -151,8 +157,8 @@ class UAVNode:
                 q_probs.append(q_dist)
                 
                 # 2. 采样下一个token x_i ~ Q_i(x)
-                # next_tok = sample(logits[:, -1, :], self.args.temperature, self.args.top_k, self.args.top_p)
-                next_tok = sample(step_logits, self.args.temperature, self.args.top_k, self.args.top_p)
+                next_tok = sample(logits[:, -1, :], self.args.temperature, self.args.top_k, self.args.top_p)
+                # next_tok = sample(step_logits, self.args.temperature, self.args.top_k, self.args.top_p)
 
                 x = torch.cat((x, next_tok), dim=1)
                 
@@ -378,6 +384,9 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             print(f"Round {rounds}")
             print(f"{'='*60}")
 
+            # if rounds == 15:
+            #     exit(0)
+
             # ========== 步骤1: 生成token ==========
             prefix_text = tokenizer.decode(prefix[0], skip_special_tokens=True)
             print(f"[初始状态] prefix: \"{prefix_text}\"")
@@ -499,7 +508,7 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
 
                     if xj_id == parallel_first_token_id:
                         print(f"[并行优化] ✓ 并行计算结果与服务器匹配!使用并行生成的序列")
-                        new_prefix = x_draft_current  
+                        new_prefix = torch.cat([x_draft, xj], dim=1)
                         parallel_accepted = True
                     else:
                         print(f"[并行优化] ✗ 并行计算结果与服务器不匹配,使用原始方案")
@@ -617,7 +626,7 @@ if __name__ == "__main__":
         stub = sd_pb2_grpc.SDVerifyStub(channel)
         
         text_parallel = generate(uav_node, stub, input_ids, tokenizer, args)
-        # text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
+        text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
 
         # print("\n===== Running Mini-BoolQ regression test =====")
         # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20 )

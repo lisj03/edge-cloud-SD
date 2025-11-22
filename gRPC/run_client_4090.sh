@@ -24,7 +24,7 @@ for GAMMA in {3..3}; do
   echo "Running with GAMMA=${GAMMA}"
   echo "========================================"
   
-  "${PYTHON_BIN}" ./client_copy.py \
+  "${PYTHON_BIN}" ./client.py \
     --input "${INPUT}" \
     --draft_model_name "${DRAFT_MODEL}" \
     --server_addr "${SERVER_ADDR}" \
