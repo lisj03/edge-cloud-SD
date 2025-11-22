@@ -325,9 +325,6 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             x_draft = prefix.clone()
             confidence = 1
 
-            if rounds == 20 :
-                break
-
             if parallel_accepted:
                 q_values = q_values_current[-len(q_values_current)+1:] 
                 q_probs = q_probs_current[-len(q_probs_current)+1:]

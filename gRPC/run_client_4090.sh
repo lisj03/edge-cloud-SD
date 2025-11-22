@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 默认参数
-INPUT="I find 3 gold coins in the bottom of a river. What do I spend them on?"
+INPUT="The Little Match Girl tells the tragic and haunting story of a young girl wandering the dark, icy streets on New Year’s Eve. Snow falls steadily, covering the city in white, and the wind bites through the narrow alleys. The girl, poorly dressed in a thin apron and wearing no shoes—she lost them in the street earlier—walks slowly, clutching a bundle of matches in her small, trembling hands. Her feet are numb, her fingers stiff, and her stomach empty. She has not sold a single match all day, but she knows she cannot go home. Her father, harsh and quick-tempered, will beat her for failing to bring in money, and the house is no warmer than the streets."
 DRAFT_MODEL="/home/lym/sijia/DSSD/gRPC/LLM/opt-125m"
 MAX_LEN=256
 SEED=321
@@ -24,7 +24,7 @@ for GAMMA in {3..3}; do
   echo "Running with GAMMA=${GAMMA}"
   echo "========================================"
   
-  "${PYTHON_BIN}" ./client.py \
+  "${PYTHON_BIN}" ./client_copy.py \
     --input "${INPUT}" \
     --draft_model_name "${DRAFT_MODEL}" \
     --server_addr "${SERVER_ADDR}" \
