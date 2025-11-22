@@ -17,6 +17,31 @@ import sd_pb2_grpc
 #测试
 from test.boolq import load_mini_boolq, extract_boolq_answer
 
+def apply_repetition_penalty(logits, input_ids, penalty: float):
+    """
+    对 logits 进行 repetition penalty。
+    logits: (1, vocab_size)
+    input_ids: (1, seq_len)
+    penalty: 惩罚系数，例如 1.1 ~ 1.4
+    
+    原理：
+        如果 token 在序列中出现过，则分数除以 penalty（或乘以 1/penalty）
+    """
+    if penalty == 1.0:
+        return logits
+
+    # 当前已出现过的 tokens
+    unique_tokens = set(input_ids[0].tolist())
+
+    for tok in unique_tokens:
+        # HuggingFace 官方逻辑如下：
+        if logits[0, tok] > 0:
+            logits[0, tok] /= penalty
+        else:
+            logits[0, tok] *= penalty
+
+    return logits
+
 def evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20):
     """
     使用 Mini-BoolQ 进行回归测试，验证 gRPC speculative decoding 的正确性。
@@ -74,7 +99,12 @@ class UAVNode:
             for _ in range(gamma):
                 logits = self.model(x).logits  # (1, seq, V)
                 q_stack.append(logits[0, -1].cpu())  # 存储最后一行 (V,)
-                next_tok = sample(logits[:, -1, :],
+                
+                # 应用重复惩罚
+                step_logits = logits[:, -1, :]
+                step_logits = apply_repetition_penalty(step_logits, x, penalty=1.4)
+                
+                next_tok = sample(step_logits,
                                 self.args.temperature, 
                                 self.args.top_k, 
                                 self.args.top_p)
@@ -100,7 +130,7 @@ class UAVNode:
           q_values: 每个推测token的概率值（list[float], 长度gamma）→ 上行传输
           q_probs: 每个推测token的完整分布（shape: (gamma, V)）→ 本地保存
         """
-        torch.manual_seed(111)
+        # torch.manual_seed(111)
 
         x = prefix.to(self.device)
         q_probs = []  # 保存完整分布（本地用于重新采样）
@@ -109,12 +139,21 @@ class UAVNode:
         with torch.no_grad():
             for i in range(gamma):
                 # 1. 小模型前向计算，得到当前分布Q_i(x)
+                # logits = self.model(x).logits  # (1, seq, V)
+                # q_dist = F.softmax(logits[0, -1], dim=-1).cpu()  # Q_i(x)：当前步骤的完整分布
                 logits = self.model(x).logits  # (1, seq, V)
-                q_dist = F.softmax(logits[0, -1], dim=-1).cpu()  # Q_i(x)：当前步骤的完整分布
+                # 取最后一个 step 的 logits
+                step_logits = logits[:, -1, :]
+                step_logits = apply_repetition_penalty(step_logits, x, penalty=1.2)
+                # 用处理后的 logits 求 softmax
+                q_dist = F.softmax(step_logits[0], dim=-1).cpu()
+
                 q_probs.append(q_dist)
                 
                 # 2. 采样下一个token x_i ~ Q_i(x)
-                next_tok = sample(logits[:, -1, :], self.args.temperature, self.args.top_k, self.args.top_p)
+                # next_tok = sample(logits[:, -1, :], self.args.temperature, self.args.top_k, self.args.top_p)
+                next_tok = sample(step_logits, self.args.temperature, self.args.top_k, self.args.top_p)
+
                 x = torch.cat((x, next_tok), dim=1)
                 
                 # 3. 记录x_i的概率值q_i = Q_i(x_i)（用于上行传输）
@@ -138,7 +177,7 @@ class UAVNode:
           xj_prime: 重新采样的token（shape: (1, 1)）
         """
 
-        torch.manual_seed(444)
+        # torch.manual_seed(444)
 
         q_j = q_probs[j-1]  # Q_j分布（对应拒绝位置j）
         diff = (pj - q_j).clamp(min=0)  # diff = max(0, P_j - Q_j)
@@ -460,7 +499,7 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
 
                     if xj_id == parallel_first_token_id:
                         print(f"[并行优化] ✓ 并行计算结果与服务器匹配!使用并行生成的序列")
-                        new_prefix = torch.cat([x_draft, xj], dim=1)
+                        new_prefix = x_draft_current  
                         parallel_accepted = True
                     else:
                         print(f"[并行优化] ✗ 并行计算结果与服务器不匹配,使用原始方案")
