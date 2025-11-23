@@ -639,9 +639,9 @@ if __name__ == "__main__":
     with grpc.insecure_channel(args.server_addr) as channel:
         stub = sd_pb2_grpc.SDVerifyStub(channel)
         
-        text_parallel = generate(uav_node, stub, input_ids, tokenizer, args)
-        text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
+        # text_parallel = generate(uav_node, stub, input_ids, tokenizer, args)
+        # text0 = generate0(uav_node, stub, input_ids, tokenizer, args)
 
-        # print("\n===== Running Mini-BoolQ regression test =====")
-        # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20 )
-        # print("Mini-BoolQ test accuracy:", acc)
+        print("\n===== Running Mini-BoolQ regression test =====")
+        acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples= 100 )
+        print("Mini-BoolQ test accuracy:", acc)

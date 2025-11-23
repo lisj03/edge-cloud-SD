@@ -4,7 +4,7 @@ set -euo pipefail
 # 默认参数
 INPUT="On a freezing New Year’s Eve, a poor little girl wandered the streets barefoot, clutching a handful of matches she had failed to sell. Afraid to go home to her harsh father, she crouched in a corner and struck a match for warmth."
 DRAFT_MODEL="/home/lym/sijia/DSSD/gRPC/LLM/opt-125m"
-MAX_LEN=256
+MAX_LEN=20
 SEED=321
 TEMPERATURE=1
 TOP_K=10
