@@ -1,0 +1,251 @@
+{
+  "generate0": {
+    "function": "generate0 (Basic DSSD)",
+    "n_samples": 10,
+    "avg_exact_match": 0.0,
+    "total_time": 111.85781693458557,
+    "avg_time_per_sample": 11.185781693458557,
+    "total_tokens": 777,
+    "avg_tokens_per_sample": 77.7,
+    "throughput": 6.946318293109452,
+    "results": [
+      {
+        "idx": 0,
+        "question": "Give the code of the airport with the least flights.",
+        "db_id": "flight_2",
+        "gold_sql": "SELECT T1.AirportCode FROM AIRPORTS AS T1 JOIN FLIGHTS AS T2 ON T1.AirportCode  =  T2.DestAirport OR T1.AirportCode  =  T2.SourceAirport GROUP BY T1.AirportCode ORDER BY count(*) LIMIT 1",
+        "pred_sql": "SELECT DISTINCT FLIGHT_ID, DISTINCT FLIGHT_ID FROM FLIGHT WINDOW WHERE TARGET_ID = ?;",
+        "output_text": "Convert the following question to SQL query for database 'flight_2':\nQuestion: Give the code of the airport with the least flights.\nSQL:\nSELECT DISTINCT FLIGHT_ID, DISTINCT FLIGHT_ID FROM FLIGHT WINDOW WHERE TARGET_ID = ?;\n-----------------------------------------------------------------------\nFLIGHT_ID | FLIGHT_ID\n-----------------------------------------------------------------------\nFLIGHT_3 | FLIGHT_3\n-----------------------------------------------------------------------\n\nConvert the following question to SQL query for database 'flight_3':\n",
+        "exact_match": 0.0,
+        "gen_time": 16.570631980895996,
+        "num_tokens": 80
+      },
+      {
+        "idx": 1,
+        "question": "Find number of pets owned by students who are older than 20.",
+        "db_id": "pets_1",
+        "gold_sql": "SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20",
+        "pred_sql": "SELECT petid FROM pets WHERE petid=\\'216420100\\' AND userid > 20;",
+        "output_text": "Convert the following question to SQL query for database 'pets_1':\nQuestion: Find number of pets owned by students who are older than 20.\nSQL:\nSELECT petid FROM pets WHERE petid=\\'216420100\\' AND userid > 20;\nRelated questions:\n1. How to create an SQL query for each pet?\n2. How to create an SQL query for each students?",
+        "exact_match": 0.0,
+        "gen_time": 7.161612033843994,
+        "num_tokens": 52
+      },
+      {
+        "idx": 2,
+        "question": "On average, when were the transcripts printed?",
+        "db_id": "student_transcripts_tracking",
+        "gold_sql": "SELECT avg(transcript_date) FROM Transcripts",
+        "pred_sql": "SELECT student.transcripts.transcript_date,",
+        "output_text": "Convert the following question to SQL query for database 'student_transcripts_tracking':\nQuestion: On average, when were the transcripts printed?\nSQL:\nSELECT student.transcripts.transcript_date,\n(SELECT student.transcripts.user_id,\nday_of_transcript\nFROM student_transcripts\nWHERE day_of_transcript IN ('2010','2013','2014','2015','2016')\nGROUP BY student.transcripts.user_id)\nFROM transcript\nWHERE transcript_",
+        "exact_match": 0.0,
+        "gen_time": 11.802097082138062,
+        "num_tokens": 82
+      },
+      {
+        "idx": 3,
+        "question": "What are the distinct battle names which are between bulgarian commander 'Kaloyan' and latin commander 'Baldwin I'?",
+        "db_id": "battle_death",
+        "gold_sql": "SELECT name FROM battle WHERE bulgarian_commander  =  'Kaloyan' AND latin_commander  =  'Baldwin I'",
+        "pred_sql": "SELECT * FROM battle_death WHERE battle_name LIKE '.' + ' Kaloyan '",
+        "output_text": "Convert the following question to SQL query for database 'battle_death':\nQuestion: What are the distinct battle names which are between bulgarian commander 'Kaloyan' and latin commander 'Baldwin I'?\nSQL:\nSELECT * FROM battle_death WHERE battle_name LIKE '.' + ' Kaloyan '\n\nYou can create a performance trigger for the above query if you want the query to run only for certain periods of time by using the recurring clause.\n\nIn the end, it would be good if you could use the CONVERT_DATE(YEAR) SQL function instead of B",
+        "exact_match": 0.0,
+        "gen_time": 15.053330898284912,
+        "num_tokens": 80
+      },
+      {
+        "idx": 4,
+        "question": "List the first and last name of all players who are left / L hand in the order of birth date.",
+        "db_id": "wta_1",
+        "gold_sql": "SELECT first_name ,  last_name FROM players WHERE hand  =  'L' ORDER BY birth_date",
+        "pred_sql": "Select firstName, LastName, Age from Players where BirthDate in (1801, 1802, 1803, 1804, 1805, 1806, 1807, 1808, 1809, 1810, 1811, 1812, 1813, 1814, 1815, 1816, 1817, 1818, 1819, 1820, 1821, 1822",
+        "output_text": "Convert the following question to SQL query for database 'wta_1':\nQuestion: List the first and last name of all players who are left / L hand in the order of birth date.\nSQL: Select firstName, LastName, Age from Players where BirthDate in (1801, 1802, 1803, 1804, 1805, 1806, 1807, 1808, 1809, 1810, 1811, 1812, 1813, 1814, 1815, 1816, 1817, 1818, 1819, 1820, 1821, 1822",
+        "exact_match": 0.0,
+        "gen_time": 10.437010288238525,
+        "num_tokens": 80
+      },
+      {
+        "idx": 5,
+        "question": "Find the name of the shops that do not hire any employee.",
+        "db_id": "employee_hire_evaluation",
+        "gold_sql": "SELECT name FROM shop WHERE shop_id NOT IN (SELECT shop_id FROM hiring)",
+        "pred_sql": "SELECT TOP w.w1.name FROM w LIMIT 1;",
+        "output_text": "Convert the following question to SQL query for database 'employee_hire_evaluation':\nQuestion: Find the name of the shops that do not hire any employee.\nSQL:\nSELECT TOP w.w1.name FROM w LIMIT 1;\n\nThe query is adequate for this case.\n\nIn the following query, I want to aggregate all the members of a group.\nQuestion: What is the best way to do the same for the group of employees.\nI tried to do something like:\nSELECT w.w1.name FROM w LIM",
+        "exact_match": 0.0,
+        "gen_time": 11.377469778060913,
+        "num_tokens": 80
+      },
+      {
+        "idx": 6,
+        "question": "How many flights arriving in Aberdeen city?",
+        "db_id": "flight_2",
+        "gold_sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode WHERE T2.City  =  \"Aberdeen\"",
+        "pred_sql": "SELECT",
+        "output_text": "Convert the following question to SQL query for database 'flight_2':\nQuestion: How many flights arriving in Aberdeen city?\nSQL:\nSELECT\nDate\nFROM\nCity\nWHERE\nDate >= City.DepartureDate\nAND\nDate >= City.ArrivalDate\nAND\nCity.QuickSort[2]\n\nThe output is the following:\n\n***********************************************************************\nF309348 1No.\nF309348 1No.\nF309348 4No.\nF309348 1",
+        "exact_match": 0.0,
+        "gen_time": 10.920008897781372,
+        "num_tokens": 80
+      },
+      {
+        "idx": 7,
+        "question": "What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?",
+        "db_id": "car_1",
+        "gold_sql": "select t1.countryid ,  t1.countryname from countries as t1 join car_makers as t2 on t1.countryid  =  t2.country group by t1.countryid having count(*)  >  3 union select t1.countryid ,  t1.countryname from countries as t1 join car_makers as t2 on t1.countryid  =  t2.country join model_list as t3 on t2.id  =  t3.maker where t3.model  =  'fiat';",
+        "pred_sql": "select id, name as name, country from car_1",
+        "output_text": "Convert the following question to SQL query for database 'car_1':\nQuestion: What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?\nSQL:\nselect id, name as name, country from car_1\nWhere country=?\nResult:\n1\n\nConvert the following question to SQL query for database 'car_1':\nQuestion: What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?\nSQL:\nselect id, name as name,country from car",
+        "exact_match": 0.0,
+        "gen_time": 9.286929845809937,
+        "num_tokens": 80
+      },
+      {
+        "idx": 8,
+        "question": "Show the names and grades of each high schooler.",
+        "db_id": "network_1",
+        "gold_sql": "SELECT name ,  grade FROM Highschooler",
+        "pred_sql": "select student_name from grades where school_ID in (1, 2, 3)",
+        "output_text": "Convert the following question to SQL query for database 'network_1':\nQuestion: Show the names and grades of each high schooler.\nSQL: select student_name from grades where school_ID in (1, 2, 3)\nThe students name is correct and the school_ID is correct, however, the student_name has a space in it.\n\nI need to know if this:\nSELECT student_name FROM grades WHERE school_ID in (1, 2, 3)\nis using the current user or if it's being",
+        "exact_match": 0.0,
+        "gen_time": 9.832842111587524,
+        "num_tokens": 83
+      },
+      {
+        "idx": 9,
+        "question": "Find the first name and age of students who have a dog but do not have a cat as a pet.",
+        "db_id": "pets_1",
+        "gold_sql": "SELECT T1.fname ,  T1.age FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'dog' AND T1.stuid NOT IN (SELECT T1.stuid FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'cat')",
+        "pred_sql": "select first_name, date_of_birth, student_id, allowed_pets as allowed_animals from pets_1;",
+        "output_text": "Convert the following question to SQL query for database 'pets_1':\nQuestion: Find the first name and age of students who have a dog but do not have a cat as a pet.\nSQL: select first_name, date_of_birth, student_id, allowed_pets as allowed_animals from pets_1;\nFetch the following information from the database:\nQuestion: Find the first name and age of students who have a dog but do not have a cat as a pet.\nSQL: select first_name, date_of_birth, student_",
+        "exact_match": 0.0,
+        "gen_time": 9.415884017944336,
+        "num_tokens": 80
+      }
+    ]
+  },
+  "generate": {
+    "function": "generate (Optimized DSSD)",
+    "n_samples": 10,
+    "avg_exact_match": 0.0,
+    "total_time": 136.3678252696991,
+    "avg_time_per_sample": 13.63678252696991,
+    "total_tokens": 791,
+    "avg_tokens_per_sample": 79.1,
+    "throughput": 5.800488483523247,
+    "results": [
+      {
+        "idx": 0,
+        "question": "Give the code of the airport with the least flights.",
+        "db_id": "flight_2",
+        "gold_sql": "SELECT T1.AirportCode FROM AIRPORTS AS T1 JOIN FLIGHTS AS T2 ON T1.AirportCode  =  T2.DestAirport OR T1.AirportCode  =  T2.SourceAirport GROUP BY T1.AirportCode ORDER BY count(*) LIMIT 1",
+        "pred_sql": "SELECT",
+        "output_text": "Convert the following question to SQL query for database 'flight_2':\nQuestion: Give the code of the airport with the least flights.\nSQL:\nSELECT\nMAX\nFLIGHT_DAY\nFROM\nREVENUE\nWHERE\nFLIGHT_DAY =\nSELECT\nMAX\nFLIGHT_DAY\nFROM\nREVENUE\nWHERE\nFLIGHT_DAY =\nANA\n\nSelect the following data from the table:\n(Name of airport)\n(Flight number)\n(Year)\n(Airport name)\n(Dest",
+        "exact_match": 0.0,
+        "gen_time": 12.668017864227295,
+        "num_tokens": 84
+      },
+      {
+        "idx": 1,
+        "question": "Find number of pets owned by students who are older than 20.",
+        "db_id": "pets_1",
+        "gold_sql": "SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20",
+        "pred_sql": "Convert the following question to SQL query for database 'pets_1':\nQuestion: Find number of pets owned by students who are older than 20.\nSQL:\nUPDATE pets_1 SET pets_ought_to_own_older_than_20 = 0\nWHERE pet_number = ?\nWHERE pet_number = ?\nI have a similar question in SQL: Find current pet owners by age.\n--\nUndefined constant ACCESS_DENIED\n--\n-- Does this constant exist in this table?\n--\nUNKNOWN constant",
+        "output_text": "Convert the following question to SQL query for database 'pets_1':\nQuestion: Find number of pets owned by students who are older than 20.\nSQL:\nUPDATE pets_1 SET pets_ought_to_own_older_than_20 = 0\nWHERE pet_number = ?\nWHERE pet_number = ?\nI have a similar question in SQL: Find current pet owners by age.\n--\nUndefined constant ACCESS_DENIED\n--\n-- Does this constant exist in this table?\n--\nUNKNOWN constant",
+        "exact_match": 0.0,
+        "gen_time": 12.18637204170227,
+        "num_tokens": 80
+      },
+      {
+        "idx": 2,
+        "question": "On average, when were the transcripts printed?",
+        "db_id": "student_transcripts_tracking",
+        "gold_sql": "SELECT avg(transcript_date) FROM Transcripts",
+        "pred_sql": "Convert the following question to SQL query for database 'student_transcripts_tracking':\nQuestion: On average, when were the transcripts printed?\nSQL: When the last time was Transcripts for Student A (transcripts.txt)\nCreated by:\n\nWrite the following query to gather data on student count, GPA, and cumulative GPA for the last semester of the 2018-19 academic year.\nResult:\n1. Number of students in the database in the last semester of 2018-19 academic year.\n2. Cumulative GPA of those",
+        "output_text": "Convert the following question to SQL query for database 'student_transcripts_tracking':\nQuestion: On average, when were the transcripts printed?\nSQL: When the last time was Transcripts for Student A (transcripts.txt)\nCreated by:\n\nWrite the following query to gather data on student count, GPA, and cumulative GPA for the last semester of the 2018-19 academic year.\nResult:\n1. Number of students in the database in the last semester of 2018-19 academic year.\n2. Cumulative GPA of those",
+        "exact_match": 0.0,
+        "gen_time": 11.881854772567749,
+        "num_tokens": 82
+      },
+      {
+        "idx": 3,
+        "question": "What are the distinct battle names which are between bulgarian commander 'Kaloyan' and latin commander 'Baldwin I'?",
+        "db_id": "battle_death",
+        "gold_sql": "SELECT name FROM battle WHERE bulgarian_commander  =  'Kaloyan' AND latin_commander  =  'Baldwin I'",
+        "pred_sql": "select LEFT([bulgarian commander -> latin commander],1),2,3,4,5,6,7,8,9",
+        "output_text": "Convert the following question to SQL query for database 'battle_death':\nQuestion: What are the distinct battle names which are between bulgarian commander 'Kaloyan' and latin commander 'Baldwin I'?\nSQL:\nselect LEFT([bulgarian commander -> latin commander],1),2,3,4,5,6,7,8,9\nfrom battle_death_bulgarian_kaloyan in ('Bulgarian', 'Kaloyan')\nLINQ:\nselect LEFT([bulgarian commander -> latin commander],1),2,3,4,5,6,7,8,9\nfrom battle_death_bulgarian_k",
+        "exact_match": 0.0,
+        "gen_time": 16.012327194213867,
+        "num_tokens": 102
+      },
+      {
+        "idx": 4,
+        "question": "List the first and last name of all players who are left / L hand in the order of birth date.",
+        "db_id": "wta_1",
+        "gold_sql": "SELECT first_name ,  last_name FROM players WHERE hand  =  'L' ORDER BY birth_date",
+        "pred_sql": "SELECT name, birth date, LS, LS, LS, L, LS",
+        "output_text": "Convert the following question to SQL query for database 'wta_1':\nQuestion: List the first and last name of all players who are left / L hand in the order of birth date.\nSQL:\nANSI:\nSELECT name, birth date, LS, LS, LS, L, LS\nFROM 'players'\nWHERE name = 'Leblanc', 'Antonio'\nGROUP BY LS, LS, LS\nORDER BY LS, LS\n\nThis is a question from a support forum. Please\nlogin to post.\n\nAbout ANSI:\n",
+        "exact_match": 0.0,
+        "gen_time": 11.378611087799072,
+        "num_tokens": 80
+      },
+      {
+        "idx": 5,
+        "question": "Find the name of the shops that do not hire any employee.",
+        "db_id": "employee_hire_evaluation",
+        "gold_sql": "SELECT name FROM shop WHERE shop_id NOT IN (SELECT shop_id FROM hiring)",
+        "pred_sql": "SELECT name FROM hire_evaluation WHERE evaluation.name = 'None';",
+        "output_text": "Convert the following question to SQL query for database 'employee_hire_evaluation':\nQuestion: Find the name of the shops that do not hire any employee.\nSQL:\nSELECT name FROM hire_evaluation WHERE evaluation.name = 'None';\n-\n----------\nPerform Review of hire_evaluation;\n\nConvert the following question to SQL query for database 'employee_hire_evaluation':\nQuestion: Find the name of the shops that do not hire any employee.\nSQL:\nSELECT name FROM hire_evaluation WHERE evaluation",
+        "exact_match": 0.0,
+        "gen_time": 37.954967975616455,
+        "num_tokens": 80
+      },
+      {
+        "idx": 6,
+        "question": "How many flights arriving in Aberdeen city?",
+        "db_id": "flight_2",
+        "gold_sql": "SELECT count(*) FROM FLIGHTS AS T1 JOIN AIRPORTS AS T2 ON T1.DestAirport  =  T2.AirportCode WHERE T2.City  =  \"Aberdeen\"",
+        "pred_sql": "SELECT * FROM....",
+        "output_text": "Convert the following question to SQL query for database 'flight_2':\nQuestion: How many flights arriving in Aberdeen city?\nSQL:\nSELECT * FROM....",
+        "exact_match": 0.0,
+        "gen_time": 2.114941120147705,
+        "num_tokens": 5
+      },
+      {
+        "idx": 7,
+        "question": "What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?",
+        "db_id": "car_1",
+        "gold_sql": "select t1.countryid ,  t1.countryname from countries as t1 join car_makers as t2 on t1.countryid  =  t2.country group by t1.countryid having count(*)  >  3 union select t1.countryid ,  t1.countryname from countries as t1 join car_makers as t2 on t1.countryid  =  t2.country join model_list as t3 on t2.id  =  t3.maker where t3.model  =  'fiat';",
+        "pred_sql": "Convert the following question to SQL query for database 'car_1':\nQuestion: What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?\nSQL:\n(COUNTIFS [Field] = [Field]1, [Field]2, [Field]3, [Field]4, [Field]5, [Field]6, [Field]7, [Field]8, [Field]9, [Field]10, [Field]11, [Field]12, [Field]13, [Field]14, [Field]15, [Field]16, [Field]17, [Field]18",
+        "output_text": "Convert the following question to SQL query for database 'car_1':\nQuestion: What are the ids and names of all countries that either have more than 3 car makers or produce fiat model ?\nSQL:\n(COUNTIFS [Field] = [Field]1, [Field]2, [Field]3, [Field]4, [Field]5, [Field]6, [Field]7, [Field]8, [Field]9, [Field]10, [Field]11, [Field]12, [Field]13, [Field]14, [Field]15, [Field]16, [Field]17, [Field]18",
+        "exact_match": 0.0,
+        "gen_time": 8.412846803665161,
+        "num_tokens": 99
+      },
+      {
+        "idx": 8,
+        "question": "Show the names and grades of each high schooler.",
+        "db_id": "network_1",
+        "gold_sql": "SELECT name ,  grade FROM Highschooler",
+        "pred_sql": "SELECT name FROM school where 'grade' in (1,2)",
+        "output_text": "Convert the following question to SQL query for database 'network_1':\nQuestion: Show the names and grades of each high schooler.\nSQL:\nSELECT name FROM school where 'grade' in (1,2)\nSELECT grade from school where 'grade' in (1,2)\nSELECT grade from school where 'grade' in (1,2)\nSELECT grade from school where 'grade' in (1,2)\nSELECT school 'grade' from school where 'grade' in (1,2)\nSELECT school 'grade' from school where 'grade' in (1,2)\nSELECT school",
+        "exact_match": 0.0,
+        "gen_time": 9.758598327636719,
+        "num_tokens": 99
+      },
+      {
+        "idx": 9,
+        "question": "Find the first name and age of students who have a dog but do not have a cat as a pet.",
+        "db_id": "pets_1",
+        "gold_sql": "SELECT T1.fname ,  T1.age FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'dog' AND T1.stuid NOT IN (SELECT T1.stuid FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'cat')",
+        "pred_sql": "SELECT * FROM pet_animals WHERE pet_animals.pet_id = pet_animals.pet_id AND pet_animals.owner_id = pet_animals.owner_id",
+        "output_text": "Convert the following question to SQL query for database 'pets_1':\nQuestion: Find the first name and age of students who have a dog but do not have a cat as a pet.\nSQL:\nSELECT * FROM pet_animals WHERE pet_animals.pet_id = pet_animals.pet_id AND pet_animals.owner_id = pet_animals.owner_id\nThe table has a MAIN key and a description key.\n\nHypothetical question:\nWhich table should I use to create a database for monitoring trucks?\nThe",
+        "exact_match": 0.0,
+        "gen_time": 13.999288082122803,
+        "num_tokens": 80
+      }
+    ]
+  },
+  "comparison": {
+    "exact_match_diff": 0.0,
+    "time_speedup": 0.8202654600772632,
+    "throughput_speedup": 0.8350450179164932
+  }
+}

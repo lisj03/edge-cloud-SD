@@ -1,0 +1,120 @@
+{
+  "experiment_name": "Confidence Threshold Sweep",
+  "max_len": 1000,
+  "input_text": "Alan Turing theorized that computers would one day become the most powerful tools for solving complex problems. In his groundbreaking 1950 paper 'Computing Machinery and Intelligence', he proposed what is now known as the Turing Test, a criterion of intelligence in a machine.",
+  "draft_model": "./LLM/opt-125m",
+  "device": "mps",
+  "temperature": 0.7,
+  "top_k": 10,
+  "top_p": 0.0,
+  "experiments": [
+    {
+      "confidence_threshold": 0.005,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:06"
+    },
+    {
+      "confidence_threshold": 0.01,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:08"
+    },
+    {
+      "confidence_threshold": 0.05,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:10"
+    },
+    {
+      "confidence_threshold": 0.1,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:12"
+    },
+    {
+      "confidence_threshold": 0.2,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:14"
+    },
+    {
+      "confidence_threshold": 0.3,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:16"
+    },
+    {
+      "confidence_threshold": 0.4,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:18"
+    },
+    {
+      "confidence_threshold": 0.5,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:20"
+    },
+    {
+      "confidence_threshold": 0.6,
+      "success": false,
+      "generated_text": "",
+      "total_time": 0,
+      "total_tokens": 0,
+      "throughput": 0,
+      "total_rounds": 0,
+      "avg_gamma": 0,
+      "acceptance_rate": 0,
+      "timestamp": "2025-11-23 16:27:22"
+    }
+  ]
+}

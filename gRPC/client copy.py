@@ -337,7 +337,7 @@ def generate0(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torc
     return generated
 
 
-def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace, return_stats: bool = False):
+def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace) -> None:
 
     input_ids = input_ids.to(uav_node.device)
     max_total_len = args.max_len + input_ids.shape[1]  # 生成的总长度（输入+输出）
@@ -404,7 +404,7 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             # print(f"\n[步骤1] 自适应生成:")
 
             #根据置信度逐个生成
-            while confidence > args.confidence_threshold:
+            while confidence > 0.01:
                 x_draft, q_value, q_prob = uav_node.draft_DSSD(x_draft, 1)
                 generated_token_num += 1
                 q_values.append(q_value[0])  
@@ -555,12 +555,12 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             new_len = prefix.shape[1]
             pbar.update(new_len - old_len)
 
-            # # 检查是否生成了EOS token
-            # eos_id = tokenizer.eos_token_id
-            # check_prefix = prefix[:, -(new_len - old_len):]
-            # if (check_prefix == eos_id).any():
-            #     print("\n[Info] EOS token detected in prefix, stopping early.")
-            #     break
+            # 检查是否生成了EOS token
+            eos_id = tokenizer.eos_token_id
+            check_prefix = prefix[:, -(new_len - old_len):]
+            if (check_prefix == eos_id).any():
+                print("\n[Info] EOS token detected in prefix, stopping early.")
+                break
 
         # 结果统计
         total_time = time.time() - start_time
@@ -573,9 +573,6 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
     
     # 计算并行优化的效率
     parallel_acceptance_rate = parallel_accepted_total / max(parallel_generated_total, 1)
-    
-    # 计算平均gamma
-    avg_gamma = correct_num_total / rounds if rounds > 0 else 0
     
     print("\n=== DSSD Results(gRPC) ===")
     print(f"Generated text: \033[91m{generated}\033[0m")
@@ -596,23 +593,6 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
     print(f"Total SLM (device) time: {total_slm_time:.2f}s")
     print(f"Total LLM (BS) time: {total_llm_time:.2f}s")
     print(f"Total time: {total_time:.2f}s")
-    
-    if return_stats:
-        stats = {
-            'generated_text': generated,
-            'throughput': throughput,
-            'total_time': total_time,
-            'total_tokens': total_tokens,
-            'total_rounds': rounds,
-            'avg_gamma': avg_gamma,
-            'acceptance_rate': acceptance_rate,
-            'correct_num_total': correct_num_total,
-            'reject_num_total': reject_num_total,
-            'total_comm_delay': total_comm_delay,
-            'total_slm_time': total_slm_time,
-            'total_llm_time': total_llm_time
-        }
-        return generated, stats
     
     return generated
 
@@ -636,7 +616,6 @@ def parse_arguments():
     parser.add_argument('--device', type=str, default='mps')
     parser.add_argument('--use_dist_summary', action='store_true', help='upload compressed distribution instead of raw logits')
     parser.add_argument('--no_cache', action='store_true', help='disable Δ-prompt cache (ablation)')
-    parser.add_argument('--confidence_threshold', type=float, default=0.01, help='confidence threshold for adaptive gamma')
     #1:添加
     parser.add_argument('--server_addr', type=str, required=True, help='e.g., <A100_IP>:50051')
     return parser.parse_args()
