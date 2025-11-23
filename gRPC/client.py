@@ -550,12 +550,8 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
 
             # 检查是否生成了EOS token
             eos_id = tokenizer.eos_token_id
-
-            print(eos_id)
-            print(prefix) 
-            exit(0)
-
-            if (prefix == eos_id).any():
+            check_prefix = prefix[:,new_len-old_len-1:new_len]
+            if (check_prefix == eos_id).any():
                 print("\n[Info] EOS token detected in prefix, stopping early.")
                 break
 
