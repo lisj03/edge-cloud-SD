@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 默认参数
-INPUT="I find 3 gold coins in the bottom of a river. What do I spend them on?"
+INPUT="On a freezing New Year’s Eve, a poor little girl wandered the streets barefoot, clutching a handful of matches she had failed to sell. Afraid to go home to her harsh father, she crouched in a corner and struck a match for warmth."
 DRAFT_MODEL="/Users/aoliliaoao/Downloads/DSSD-Efficient-Edge-Computing/gRPC/LLM/opt-125m"
 MAX_LEN=128
 SEED=321
