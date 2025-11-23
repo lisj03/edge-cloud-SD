@@ -548,6 +548,17 @@ def generate(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch
             new_len = prefix.shape[1]
             pbar.update(new_len - old_len)
 
+            # 检查是否生成了EOS token
+            eos_id = tokenizer.eos_token_id
+
+            print(eos_id)
+            print(prefix) 
+            exit(0)
+
+            if (prefix == eos_id).any():
+                print("\n[Info] EOS token detected in prefix, stopping early.")
+                break
+
         # 结果统计
         total_time = time.time() - start_time
         total_tokens = prefix.shape[1] - initial_len  # 生成的token总数（排除输入）
@@ -631,4 +642,3 @@ if __name__ == "__main__":
         # print("\n===== Running Mini-BoolQ regression test =====")
         # acc = evaluate_on_mini_boolq(uav_node, stub, tokenizer, args, n_samples=20 )
         # print("Mini-BoolQ test accuracy:", acc)
-    
