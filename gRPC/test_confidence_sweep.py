@@ -170,7 +170,7 @@ def run_confidence_sweep(args):
     uav_node = UAVNode(draft_model, device, args)
     
     # confidence阈值列表
-    confidence_thresholds = [0.005, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    confidence_thresholds = [0.013,0.013]
     
     # 存储所有结果
     all_results = {

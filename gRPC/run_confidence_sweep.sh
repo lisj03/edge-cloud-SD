@@ -11,8 +11,8 @@ echo "========================================"
 # 配置
 SERVER_ADDR="127.0.0.1:8000"
 DRAFT_MODEL="./LLM/opt-125m"
-DEVICE="mps"
-MAX_LEN=1000
+DEVICE="cuda:0"
+MAX_LEN=256
 INPUT_TEXT="Alan Turing theorized that computers would one day become the most powerful tools for solving complex problems. In his groundbreaking 1950 paper 'Computing Machinery and Intelligence', he proposed what is now known as the Turing Test, a criterion of intelligence in a machine."
 
 echo ""

@@ -18,7 +18,7 @@ SERVER_ADDR=127.0.0.1:8000
 PYTHON_BIN=${PYTHON_BIN:-python3}
 
 # 循环运行gamma
-for GAMMA in {3..3}; do
+for GAMMA in {2..20}; do
   echo ""
   echo "========================================"
   echo "Running with GAMMA=${GAMMA}"
