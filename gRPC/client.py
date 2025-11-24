@@ -2,7 +2,7 @@ import argparse
 from speculative import * 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 import time
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -192,7 +192,15 @@ class UAVNode:
 
         return xj_prime
 
-def generate0(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace) -> None:
+# def generate0(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torch.Tensor, tokenizer: AutoTokenizer, args: argparse.Namespace) -> None:
+def generate0(
+    uav_node: UAVNode,
+    stub: sd_pb2_grpc.SDVerifyStub,
+    input_ids: torch.Tensor,
+    tokenizer: AutoTokenizer,
+    args: argparse.Namespace,
+    return_stats: bool = False
+) -> Union[str, Tuple[str, Dict[str, Union[float, int, str]]]]:
 
     input_ids = input_ids.to(uav_node.device)
     max_total_len = args.max_len + input_ids.shape[1]  # 生成的总长度（输入+输出）
@@ -333,7 +341,23 @@ def generate0(uav_node: UAVNode, stub: sd_pb2_grpc.SDVerifyStub, input_ids: torc
     print(f"Total SLM (device) time: {total_slm_time:.2f}s")
     print(f"Total LLM (BS) time: {total_llm_time:.2f}s")
     print(f"Total time: {total_time:.2f}s")
-    
+
+    if return_stats:
+        stats = {
+            'generated_text': generated,
+            'throughput': throughput,
+            'total_time': total_time,
+            'total_tokens': total_tokens,
+            'total_rounds': rounds,
+            'acceptance_rate': acceptance_rate,
+            'correct_num_total': correct_num_total,
+            'reject_num_total': reject_num_total,
+            'total_comm_delay': total_comm_delay,
+            'total_slm_time': total_slm_time,
+            'total_llm_time': total_llm_time
+        }
+        return generated, stats
+
     return generated
 
 
